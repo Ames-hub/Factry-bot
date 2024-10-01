@@ -24,9 +24,11 @@ if not os.path.exists('secrets.env'):
 if os.path.exists('secrets.env'):
     dotenv.load_dotenv('secrets.env')
 
+Intents = hikari.Intents.MESSAGE_CONTENT + hikari.Intents.GUILD_MESSAGES
+
 bot = lightbulb.BotApp(
     token=os.environ.get("TOKEN"),
-    intents=hikari.Intents.MESSAGE_CONTENT,
+    intents=Intents,
 )
 
 bot.d['colourless'] = hikari.Colour(0x2b2d31)  # Dark theme color of discord used in the embeds
@@ -58,7 +60,7 @@ class mem:
                 'id': 'INTEGER PRIMARY KEY AUTOINCREMENT',
                 'category': 'TEXT NOT NULL',
                 'added_by': 'TEXT NOT NULL',  # Set to be a UUID
-                'fact': 'TEXT NOT NULL'
+                'fact': 'TEXT NOT NULL UNIQUE'
             }
         }
 
@@ -299,6 +301,17 @@ class mem:
             return data[0]
         return "There are no fun facts found for this category. :("
 
+    @staticmethod
+    def get_fact_author(fact: str) -> str:
+        with get_conn() as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT added_by
+                FROM category_facts
+                WHERE fact = ?;
+            ''', (fact,))
+            return cur.fetchone()[0]
+
 mem.modernize()
 
 # ALl the categories and facts that the bot starts off with.
@@ -364,6 +377,7 @@ for category in category_fact_dict.keys():
         continue
 
 # Add default facts to the database
+already_existing_facts_count = 0
 for categories, facts in category_fact_dict.items():
     try:
         with get_conn() as conn:
@@ -373,12 +387,13 @@ for categories, facts in category_fact_dict.items():
                     INSERT INTO category_facts (category, added_by, fact)
                     VALUES (?, '1090899298650169385', ?);
                 ''', (categories, fact))
-    except sqlite3.IntegrityError:
+    except sqlite3.IntegrityError as err:
+        already_existing_facts_count += 1
         continue
-
 conn.commit()
 
 print("Database has been updated with new facts.")
+print(f"{already_existing_facts_count} facts already existed in the database and were not added.")
 
 @bot.listen()
 async def msg_listener(event: hikari.events.MessageCreateEvent) -> None:
@@ -395,7 +410,22 @@ async def msg_listener(event: hikari.events.MessageCreateEvent) -> None:
         is_trigger = mem.is_trigger(closest_match)
         if is_trigger['result']:
             fun_fact = mem.get_fact(is_trigger['category'])
-            await event.message.respond(f"Fun {is_trigger['trigger']} fact! {fun_fact}")
+            if not "fun fact" in fun_fact.lower():
+                body = f"Fun {is_trigger['trigger']} fact! {fun_fact}"
+            else:
+                body = fun_fact
+
+            body += f"\n\n*This fact was contributed by <@{mem.get_fact_author(fact)}>!*"
+
+            embed = (
+                hikari.Embed(
+                    title=is_trigger['trigger'],
+                    description=body,
+                    color=bot.d['colourless'],
+                )
+            )
+            await event.message.respond(embed=embed)
+
             # return so as to prevent multiple responses from the bot
             return
 
