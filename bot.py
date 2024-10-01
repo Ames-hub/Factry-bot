@@ -26,7 +26,7 @@ if os.path.exists('secrets.env'):
 
 bot = lightbulb.BotApp(
     token=os.environ.get("TOKEN"),
-    intents=hikari.Intents.ALL,
+    intents=hikari.Intents.MESSAGE_CONTENT,
 )
 
 bot.d['colourless'] = hikari.Colour(0x2b2d31)  # Dark theme color of discord used in the embeds
