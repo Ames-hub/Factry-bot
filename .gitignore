@@ -3,3 +3,4 @@ venv
 secrets.env
 memory.sqlite3
 /logs
+__pycache__
