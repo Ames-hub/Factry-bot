@@ -436,7 +436,7 @@ async def msg_listener(event: hikari.events.MessageCreateEvent) -> None:
 async def github_cmd(ctx: lightbulb.SlashContext) -> None:
     embed = (
         hikari.Embed(
-            title="'https://github.com/Ames-hub/Factry-bot'",
+            title="https://github.com/Ames-hub/Factry-bot",
             description="This is the github link for the bot! If you encounter a problem, you can open a pull request here.",
             color=bot.d['colourless'],
         )
@@ -669,3 +669,56 @@ async def remove_fact_cmd(ctx: lightbulb.SlashContext) -> None:
     await ctx.respond(embed, flags=hikari.MessageFlag.EPHEMERAL)
 
 bot.run()
+
+@bot.command
+@lightbulb.app_command_permissions(dm_enabled=False)
+@lightbulb.command(name="list_triggers", description="List all the triggers in the database.")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def list_triggers_cmd(ctx: lightbulb.SlashContext) -> None:
+    triggers = mem.get_all_triggers()
+    triggers = [trigger[0] for trigger in triggers]
+
+    embed = (
+        hikari.Embed(
+            title="All Registered Triggers",
+            description="\n".join(triggers),
+            color=bot.d['colourless'],
+        )
+    )
+
+    await ctx.respond(embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+@bot.command
+@lightbulb.app_command_permissions(dm_enabled=False)
+@lightbulb.command(name="list_categories", description="List all the categories in the database.")
+@lightbulb.implements(lightbulb.SlashCommand)
+async def list_categories_cmd(ctx: lightbulb.SlashContext) -> None:
+    categories = mem.get_all_categories()
+    categories = [category[0] for category in categories]
+
+    embed = (
+        hikari.Embed(
+            title="All Registered Categories",
+            description="\n".join(categories),
+            color=bot.d['colourless'],
+        )
+    )
+
+    await ctx.respond(embed, flags=hikari.MessageFlag.EPHEMERAL)
+
+# An error handling for if a non-dm command is used in a dm.
+@bot.listen(lightbulb.CommandErrorEvent)
+async def on_error(event: lightbulb.CommandErrorEvent) -> None:
+    if isinstance(event.exception, lightbulb.CommandInvocationError):
+        await event.context.respond(f"Something went wrong during invocation of command `{event.context.command.name}`.")
+        raise event.exception
+
+    # Unwrap the exception to get the original cause
+    exception = event.exception.__cause__ or event.exception
+
+    if isinstance(exception, lightbulb.CommandIsOnCooldown):
+        await event.context.respond(f"This command is on cooldown. Retry in `{exception.retry_after:.2f}` seconds.")
+    elif isinstance(exception, lightbulb.errors.OnlyInGuild):
+        await event.context.respond("This command can only be used in a guild.")
+    else:
+        raise event.exception
