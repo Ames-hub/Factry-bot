@@ -14,8 +14,8 @@ logging.basicConfig(
 
 class bot_plugin(lightbulb.Plugin):
     @staticmethod
-    @plugin.listener(hikari.events.MessageCreateEvent)
-    async def msg_listener(event: hikari.events.MessageCreateEvent) -> None:
+    @plugin.listener(hikari.events.GuildMessageCreateEvent)
+    async def msg_listener(event: hikari.events.GuildMessageCreateEvent) -> None:
         if event.author.is_bot:
             return
 

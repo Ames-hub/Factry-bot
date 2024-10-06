@@ -33,6 +33,17 @@ class bot_plugin(lightbulb.Plugin):
         trigger = ctx.options.trigger
         category = ctx.options.category
 
+        if " " in category:
+            embed = (
+                hikari.Embed(
+                    title="Invalid format.",
+                    description="The category name cannot contain spaces!",
+                    color=plugin.bot.d['colourless'],
+                )
+            )
+            await ctx.respond(embed, flags=hikari.MessageFlag.EPHEMERAL)
+            return
+
         category_did_exist = mem.does_category_exists(category)
         try:
             mem.add_trigger(trigger, category, ctx.author.id)
